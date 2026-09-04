@@ -1,7 +1,9 @@
 #!/bin/bash
 # =========================================================
 # CJH PANEL - Automated Installation & Management Script
+# =========================================================
 # Credit: ZAIRA x Jishnu
+# Original project permission granted by Jishnu
 # =========================================================
 
 set -e
@@ -14,9 +16,7 @@ PANEL_NAME="CJH Panel"
 PANEL_SHORT="CJH"
 PANEL_CREDIT="ZAIRA x Jishnu"
 
-# IMPORTANT:
-# Replace YOUR-GITHUB-USERNAME with your GitHub username.
-REPO_URL="${CJH_REPO_URL:-https://github.com/YOUR-GITHUB-USERNAME/CJH-Panel.git}"
+REPO_URL="${CJH_REPO_URL:-https://github.com/dhony7994-pixel/CJH-panel-.git}"
 
 MAIN_PORT="6767"
 DEV_PORT="3000"
@@ -40,26 +40,37 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # =========================================================
-# FIND / PREPARE WORK DIRECTORY
+# FIND / CLONE PANEL
 # =========================================================
 
-if [ -f "package.json" ]; then
+if [ -f "package.json" ] && grep -q "react-example" "package.json" 2>/dev/null; then
     WORK_DIR="."
-elif [ -d "CJH-Panel" ]; then
-    WORK_DIR="CJH-Panel"
+
+elif [ -d "CJH" ]; then
+    WORK_DIR="CJH"
+
+elif [ -d "CJH-panel-" ]; then
+    WORK_DIR="CJH-panel-"
+
 else
-    echo -e "${CYAN}Downloading ${PANEL_NAME}...${NC}"
+    echo -e "${CYAN}${BOLD}"
+    echo "Downloading CJH Panel..."
+    echo -e "${NC}"
 
-    if ! git clone "$REPO_URL" CJH-Panel; then
+    git clone "$REPO_URL" CJH 2>/dev/null || {
         echo -e "${RED}Failed to clone CJH Panel repository.${NC}"
-        echo -e "${YELLOW}Check REPO_URL inside install.sh.${NC}"
+        echo "Repository:"
+        echo "$REPO_URL"
         exit 1
-    fi
+    }
 
-    WORK_DIR="CJH-Panel"
+    WORK_DIR="CJH"
 fi
 
-cd "$WORK_DIR" || exit 1
+cd "$WORK_DIR" || {
+    echo -e "${RED}Could not enter CJH Panel directory.${NC}"
+    exit 1
+}
 
 # =========================================================
 # BANNER
@@ -69,20 +80,20 @@ print_banner() {
     clear 2>/dev/null || true
 
     echo -e "${CYAN}${BOLD}"
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║                                                      ║"
-    echo "║        ██████╗     ██╗██╗  ██╗                      ║"
-    echo "║       ██╔════╝     ██║██║  ██║                      ║"
-    echo "║       ██║          ██║███████║                      ║"
-    echo "║       ██║          ██║██╔══██║                      ║"
-    echo "║       ╚██████╗     ██║██║  ██║                      ║"
-    echo "║        ╚═════╝     ╚═╝╚═╝  ╚═╝                      ║"
-    echo "║                                                      ║"
-    echo "║                 CJH PANEL INSTALLER                 ║"
-    echo "║                                                      ║"
-    echo "║                  ${PANEL_CREDIT}                  ║"
-    echo "║                                                      ║"
-    echo "╚══════════════════════════════════════════════════════╝"
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║                                              ║"
+    echo "║          ██████╗     ██╗  ██╗               ║"
+    echo "║         ██╔════╝     ██║  ██║               ║"
+    echo "║         ██║          ███████║               ║"
+    echo "║         ██║          ██╔══██║               ║"
+    echo "║         ╚██████╗     ██║  ██║               ║"
+    echo "║          ╚═════╝     ╚═╝  ╚═╝               ║"
+    echo "║                                              ║"
+    echo "║               CJH PANEL                     ║"
+    echo "║                                              ║"
+    echo "║             ZAIRA x Jishnu                  ║"
+    echo "║                                              ║"
+    echo "╚══════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
@@ -107,7 +118,7 @@ log_error() {
 }
 
 # =========================================================
-# PM2
+# PM2 COMMAND
 # =========================================================
 
 run_pm2() {
@@ -130,7 +141,6 @@ run_pm2() {
 # =========================================================
 
 execute_step() {
-
     local msg="$1"
     shift
 
@@ -139,7 +149,7 @@ execute_step() {
 
     rm -f "$log_file"
 
-    printf "  ${CYAN}→${NC} %-42s " "$msg"
+    printf "  ${CYAN}→${NC} %-40s " "$msg"
 
     "$@" > "$log_file" 2>&1 &
     local pid=$!
@@ -147,48 +157,35 @@ execute_step() {
     local spinstr='|/-\'
 
     while kill -0 "$pid" 2>/dev/null; do
-
         local temp=${spinstr#?}
-
         printf "[%c]" "$spinstr"
-
         spinstr=$temp${spinstr%"$temp"}
-
         sleep 0.08
-
         printf "\b\b\b"
-
     done
 
     wait "$pid"
     local status=$?
 
     if [ "$status" -eq 0 ]; then
-
-        printf "\r  ${GREEN}✓${NC} %-42s ${GREEN}[Done]${NC}\n" "$msg"
-
+        printf "\r  ${GREEN}✓${NC} %-40s ${GREEN}[Done]${NC}\n" "$msg"
     else
+        printf "\r  ${RED}✗${NC} %-40s ${RED}[Fail]${NC}\n" "$msg"
 
-        printf "\r  ${RED}✗${NC} %-42s ${RED}[Fail]${NC}\n" "$msg"
-
-        echo
-        echo "======================================================"
+        echo -e "\n================================================"
         echo -e "${RED}INSTALLATION STEP FAILED${NC}"
-        echo "======================================================"
-
+        echo -e "================================================"
         echo -e "Step: ${BOLD}$msg${NC}"
-        echo "Exit Code: $status"
-
-        echo
-        echo "Output / Reason:"
+        echo -e "Exit Code: $status"
+        echo -e "\nOutput / Reason:"
 
         if [ -s "$log_file" ]; then
             tail -n 60 "$log_file"
         else
-            echo "No output was generated."
+            echo "No output was generated by the command."
         fi
 
-        echo "======================================================"
+        echo -e "================================================"
         echo -e "Installation stopped safely.\n"
 
         exit 1
@@ -235,7 +232,6 @@ check_system_deps() {
                 xz \
                 unzip \
                 -q > /dev/null 2>&1 || true
-
         fi
     fi
 
@@ -243,14 +239,12 @@ check_system_deps() {
 }
 
 # =========================================================
-# DOCKER INSTALLATION
+# INSTALL DOCKER
 # =========================================================
 
 install_docker() {
 
     if ! command -v docker &> /dev/null; then
-
-        log_info "Installing Docker..."
 
         curl -fsSL https://get.docker.com | sh > /dev/null 2>&1 || true
 
@@ -263,9 +257,8 @@ install_docker() {
     fi
 
     if ! command -v docker &> /dev/null; then
-
         echo "Docker could not be installed automatically."
-
+        echo "Please install Docker and retry."
         return 1
     fi
 
@@ -288,8 +281,7 @@ install_docker() {
     if ! docker compose version &> /dev/null && \
        ! command -v docker-compose &> /dev/null; then
 
-        echo "Docker Compose is required."
-
+        echo "Docker Compose is required but could not be installed."
         return 1
     fi
 
@@ -297,7 +289,7 @@ install_docker() {
 }
 
 # =========================================================
-# NODE.JS
+# INSTALL NODE.JS
 # =========================================================
 
 install_node() {
@@ -305,13 +297,10 @@ install_node() {
     local NEED_NODE=0
 
     if ! command -v node &> /dev/null; then
-
         NEED_NODE=1
-
     else
 
         local NODE_MAJOR
-
         NODE_MAJOR=$(node -v | tr -d 'v' | cut -d'.' -f1)
 
         if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 20 ]; then
@@ -323,8 +312,7 @@ install_node() {
 
         if command -v apt-get &> /dev/null; then
 
-            curl -fsSL \
-            https://deb.nodesource.com/setup_22.x \
+            curl -fsSL https://deb.nodesource.com/setup_22.x \
             | sudo -E bash - \
             > /dev/null 2>&1 || true
 
@@ -335,9 +323,7 @@ install_node() {
         local CURRENT_MAJOR=0
 
         if command -v node &> /dev/null; then
-
             CURRENT_MAJOR=$(node -v | tr -d 'v' | cut -d'.' -f1)
-
         fi
 
         if [ "$CURRENT_MAJOR" -lt 20 ]; then
@@ -348,23 +334,18 @@ install_node() {
             local NODE_ARCH="x64"
 
             case "$ARCH" in
-
                 x86_64)
                     NODE_ARCH="x64"
                     ;;
-
                 aarch64|arm64)
                     NODE_ARCH="arm64"
                     ;;
-
                 armv7l)
                     NODE_ARCH="armv7l"
                     ;;
-
                 *)
                     NODE_ARCH="x64"
                     ;;
-
             esac
 
             local NODE_DIST="node-v22.13.1-linux-${NODE_ARCH}"
@@ -376,8 +357,7 @@ install_node() {
 
             if [ -f "/tmp/node22.tar.xz" ]; then
 
-                sudo tar -xJf \
-                /tmp/node22.tar.xz \
+                sudo tar -xJf /tmp/node22.tar.xz \
                 -C /usr/local \
                 --strip-components=1 \
                 > /dev/null 2>&1 || true
@@ -388,14 +368,11 @@ install_node() {
     fi
 
     if ! command -v node &> /dev/null; then
-
-        echo "Node.js >=20 installation failed."
-
+        echo "Node.js (>=20) installation failed."
         return 1
     fi
 
     if ! command -v pm2 &> /dev/null; then
-
         sudo npm install -g pm2 \
         > /dev/null 2>&1 || true
     fi
@@ -413,7 +390,7 @@ setup_docker_env() {
 
     if [ ! -f "Dockerfile" ]; then
 
-cat << 'EOF2' > Dockerfile
+        cat << 'EOF2' > Dockerfile
 FROM node:22-alpine
 
 RUN apk add --no-cache \
@@ -443,7 +420,7 @@ EOF2
 
     if [ ! -f "docker-compose.yml" ]; then
 
-cat << 'EOF2' > docker-compose.yml
+        cat << 'EOF2' > docker-compose.yml
 version: '3.8'
 
 services:
@@ -465,6 +442,7 @@ services:
       - ./.data:/app/.data
       - ./backups:/app/backups
       - /var/run/docker.sock:/var/run/docker.sock
+
 
   cjh-admin:
     build: .
@@ -500,18 +478,20 @@ setup_node_env() {
 
     if [ ! -f "ecosystem.config.cjs" ]; then
 
-cat << 'EOF2' > ecosystem.config.cjs
-module.exports = {
+        cat << 'EOF2' > ecosystem.config.cjs
 
+module.exports = {
   apps: [
 
     {
       name: "cjh-main",
       script: "npm",
       args: "start",
+
       instances: 1,
       autorestart: true,
       watch: false,
+
       max_memory_restart: "1G",
 
       env: {
@@ -524,9 +504,11 @@ module.exports = {
       name: "cjh-admin",
       script: "npm",
       args: "run dev",
+
       instances: 1,
       autorestart: true,
       watch: false,
+
       max_memory_restart: "2G",
 
       env: {
@@ -536,64 +518,49 @@ module.exports = {
     }
 
   ]
-
 };
+
 EOF2
 
     fi
 }
 
 # =========================================================
-# INSTALL DEPENDENCIES
+# INSTALL NPM DEPENDENCIES
 # =========================================================
 
 install_dependencies() {
 
     if [ -f "package-lock.json" ]; then
-
         npm ci || npm install
-
     else
-
         npm install
-
     fi
 }
 
 # =========================================================
-# OWNER ACCOUNT
+# CREATE OWNER
 # =========================================================
 
 setup_owner() {
-
-    if npm run | grep -q "createuser"; then
-
-        npm run createuser
-
-    else
-
-        log_warning "createuser script not found."
-        log_info "Skipping automatic owner creation."
-
-    fi
+    npm run createuser
 }
 
 # =========================================================
-# BUILD
+# BUILD APPLICATION
 # =========================================================
 
 build_application() {
-
     npm run build
 }
 
 # =========================================================
-# START DOCKER PANEL
+# START PANEL WITH DOCKER
 # =========================================================
 
 start_panel_docker() {
 
-    local TARGET="$1"
+    local TARGET=$1
 
     if command -v docker-compose &> /dev/null; then
 
@@ -607,7 +574,6 @@ start_panel_docker() {
     else
 
         echo "Docker Compose not found."
-
         return 1
     fi
 
@@ -625,10 +591,13 @@ start_panel_docker() {
        [ "$container_status" == "not_found" ]; then
 
         echo "Docker container $TARGET failed to start."
+        echo "Status: $container_status"
 
-        echo "--- Docker Logs ---"
+        echo "--- Docker Logs for $TARGET ---"
 
-        docker logs "$TARGET" --tail 40 2>&1 || true
+        docker logs "$TARGET" \
+        --tail 40 \
+        2>&1 || true
 
         return 1
     fi
@@ -637,18 +606,21 @@ start_panel_docker() {
 }
 
 # =========================================================
-# START NODE PANEL
+# START PANEL WITH PM2
 # =========================================================
 
 start_panel_node() {
 
-    local TARGET="$1"
+    local TARGET=$1
 
-    run_pm2 delete "$TARGET" 2>/dev/null || true
+    run_pm2 delete "$TARGET" \
+    2>/dev/null || true
 
-    run_pm2 start ecosystem.config.cjs --only "$TARGET"
+    run_pm2 start ecosystem.config.cjs \
+    --only "$TARGET"
 
-    run_pm2 save --force 2>/dev/null || true
+    run_pm2 save --force \
+    2>/dev/null || true
 }
 
 # =========================================================
@@ -657,9 +629,9 @@ start_panel_node() {
 
 health_check() {
 
-    local PORT="$1"
-    local RUNTIME_TYPE="$2"
-    local TARGET="$3"
+    local PORT=$1
+    local RUNTIME_TYPE=$2
+    local TARGET=$3
 
     local ATTEMPTS=0
     local MAX_ATTEMPTS=30
@@ -667,11 +639,11 @@ health_check() {
     while [ "$ATTEMPTS" -lt "$MAX_ATTEMPTS" ]; do
 
         if curl -s -f \
-        "http://127.0.0.1:${PORT}/api/health" \
-        >/dev/null 2>&1 || \
-        curl -s -f \
-        "http://127.0.0.1:${PORT}/" \
-        >/dev/null 2>&1; then
+            "http://127.0.0.1:${PORT}/api/health" \
+            >/dev/null 2>&1 || \
+           curl -s -f \
+            "http://127.0.0.1:${PORT}/" \
+            >/dev/null 2>&1; then
 
             return 0
         fi
@@ -688,7 +660,9 @@ health_check() {
             if [ "$cstatus" == "exited" ] || \
                [ "$cstatus" == "dead" ]; then
 
-                echo "Container $TARGET exited."
+                echo "Container $TARGET exited unexpectedly."
+
+                echo "--- Logs for $TARGET ---"
 
                 docker logs "$TARGET" \
                 --tail 50 \
@@ -703,7 +677,9 @@ health_check() {
                 | grep "$TARGET" \
                 | grep -qE "errored|stopped"; then
 
-                echo "PM2 process $TARGET crashed."
+                echo "PM2 process $TARGET crashed or stopped."
+
+                echo "--- Logs for $TARGET ---"
 
                 run_pm2 logs "$TARGET" \
                 --lines 40 \
@@ -717,15 +693,19 @@ health_check() {
         sleep 2
 
         ATTEMPTS=$((ATTEMPTS + 1))
-
     done
 
-    echo "Health check timed out on port $PORT."
+    echo "Health check timed out."
+    echo "Waiting for application on port $PORT."
 
     if [ "$RUNTIME_TYPE" == "docker" ]; then
 
+        echo "--- Container Status ---"
+
         docker ps -a \
         --filter "name=$TARGET" || true
+
+        echo "--- Docker Logs ---"
 
         docker logs "$TARGET" \
         --tail 50 \
@@ -733,15 +713,51 @@ health_check() {
 
     else
 
+        echo "--- PM2 Status ---"
+
         run_pm2 list || true
+
+        echo "--- PM2 Logs ---"
 
         run_pm2 logs "$TARGET" \
         --lines 50 \
         --nostream || true
-
     fi
 
     return 1
+}
+
+# =========================================================
+# CHECK PORT
+# =========================================================
+
+check_port() {
+
+    local PORT=$1
+
+    if command -v ss &> /dev/null; then
+
+        if ss -lnt | grep -q ":$PORT "; then
+            return 1
+        fi
+
+    elif command -v netstat &> /dev/null; then
+
+        if netstat -tuln | grep -q ":$PORT "; then
+            return 1
+        fi
+
+    elif command -v lsof &> /dev/null; then
+
+        if lsof -i :"$PORT" \
+            -sTCP:LISTEN \
+            -t >/dev/null 2>&1; then
+
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 # =========================================================
@@ -754,32 +770,34 @@ show_status() {
     local DEV_STATUS="OFF"
     local SFTP_STATUS="OFF"
 
-    if \
-    (run_pm2 list 2>/dev/null \
+    if (run_pm2 list 2>/dev/null \
         | grep "cjh-main" \
         | grep -q "online") || \
-    (command -v docker &> /dev/null && \
-        docker ps --format '{{.Names}}' \
+       (command -v docker &> /dev/null && \
+        docker ps \
+        --format '{{.Names}}' \
+        2>/dev/null \
         | grep -q "^cjh-main$") || \
-    curl -s -m 2 \
+       curl -s -m 2 \
         http://127.0.0.1:6767/api/health \
         2>/dev/null \
-        | grep -q "Panel"; then
+        | grep -q "CJH Panel"; then
 
         MAIN_STATUS="ONLINE"
     fi
 
-    if \
-    (run_pm2 list 2>/dev/null \
+    if (run_pm2 list 2>/dev/null \
         | grep "cjh-admin" \
         | grep -q "online") || \
-    (command -v docker &> /dev/null && \
-        docker ps --format '{{.Names}}' \
+       (command -v docker &> /dev/null && \
+        docker ps \
+        --format '{{.Names}}' \
+        2>/dev/null \
         | grep -q "^cjh-admin$") || \
-    curl -s -m 2 \
+       curl -s -m 2 \
         http://127.0.0.1:3000/api/health \
         2>/dev/null \
-        | grep -q "Panel"; then
+        | grep -q "CJH Panel"; then
 
         DEV_STATUS="ONLINE"
     fi
@@ -792,59 +810,47 @@ show_status() {
 
     local IP
 
-    IP=$(curl -s -m 2 ifconfig.me 2>/dev/null \
-        || curl -s -m 2 icanhazip.com 2>/dev/null \
-        || hostname -I 2>/dev/null | awk '{print $1}' \
-        || echo "localhost")
+    IP=$(curl -s -m 2 ifconfig.me 2>/dev/null || \
+         curl -s -m 2 icanhazip.com 2>/dev/null || \
+         hostname -I 2>/dev/null \
+         | awk '{print $1}' || \
+         echo "localhost")
 
-    echo
-    echo -e "${CYAN}${BOLD}"
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║                 CJH PANEL STATUS                    ║"
-    echo "╠══════════════════════════════════════════════════════╣"
-    echo "║                                                      ║"
+    echo -e "\n${CYAN}${BOLD}"
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║              CJH PANEL STATUS               ║"
+    echo "╠══════════════════════════════════════════════╣"
+    echo -e "${NC}"
+
+    echo "║"
+    echo "║  Brand            : ZAIRA x Jishnu"
 
     if [ "$MAIN_STATUS" == "ONLINE" ]; then
-
-        echo -e "║  Main Panel      : ${GREEN}ONLINE${NC}"
-        echo "║  Main URL        : http://${IP}:6767"
-
+        echo -e "║  Main Panel       : ${GREEN}ONLINE${NC} (http://${IP}:6767)"
     else
-
-        echo -e "║  Main Panel      : ${RED}OFF${NC}"
-
+        echo -e "║  Main Panel       : ${RED}OFF${NC}"
     fi
 
-    echo "║  Main Port       : 6767"
+    echo "║  Main Port        : 6767"
 
     if [ "$DEV_STATUS" == "ONLINE" ]; then
-
-        echo -e "║  Developer Panel : ${GREEN}ONLINE${NC}"
-        echo "║  Developer URL   : http://${IP}:3000"
-
+        echo -e "║  Developer Panel  : ${GREEN}ONLINE${NC} (http://${IP}:3000)"
     else
-
-        echo -e "║  Developer Panel : ${YELLOW}OFF${NC}"
-
+        echo -e "║  Developer Panel  : ${YELLOW}OFF${NC}"
     fi
 
-    echo "║  Developer Port  : 3000"
+    echo "║  Developer Port   : 3000"
 
     if [ "$SFTP_STATUS" == "ONLINE" ]; then
-
-        echo -e "║  SFTP Service    : ${GREEN}ONLINE${NC}"
-
+        echo -e "║  SFTP Service     : ${GREEN}ONLINE${NC} (Port 2022)"
     else
-
-        echo -e "║  SFTP Service    : ${RED}OFF${NC}"
-
+        echo -e "║  SFTP Service     : ${RED}OFF${NC}"
     fi
 
     echo "║"
-    echo "║  Credit          : ZAIRA x Jishnu"
-    echo "║"
-    echo "╚══════════════════════════════════════════════════════╝"
 
+    echo -e "${CYAN}${BOLD}"
+    echo "╚══════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
@@ -854,42 +860,37 @@ show_status() {
 
 install_panel() {
 
-    local TARGET="$1"
+    local TARGET=$1
 
     local PANEL_NAME="Main Panel"
-    local PORT="$MAIN_PORT"
-    local SERVICE_NAME="$MAIN_SERVICE"
+    local PORT="6767"
+    local SERVICE_NAME="cjh-main"
 
     if [ "$TARGET" == "dev" ]; then
 
         PANEL_NAME="Developer Panel"
-        PORT="$DEV_PORT"
-        SERVICE_NAME="$DEV_SERVICE"
-
+        PORT="3000"
+        SERVICE_NAME="cjh-admin"
     fi
 
     print_banner
 
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║              SELECT INSTALLATION MODE               ║"
-    echo "╠══════════════════════════════════════════════════════╣"
-    echo "║                                                      ║"
-    echo "║  1) Docker                                           ║"
-    echo "║  2) Local Node.js                                    ║"
-    echo "║  3) Back                                             ║"
-    echo "║                                                      ║"
-    echo "╚══════════════════════════════════════════════════════╝"
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║          SELECT INSTALLATION MODE           ║"
+    echo "╠══════════════════════════════════════════════╣"
+    echo "║                                              ║"
+    echo "║  1) Docker                                   ║"
+    echo "║  2) Local Node.js                            ║"
+    echo "║  3) Back                                     ║"
+    echo "║                                              ║"
+    echo "╚══════════════════════════════════════════════╝"
 
     local MODE_CHOICE=""
 
     if [ -n "$RUN_CHOICE" ]; then
-
         MODE_CHOICE="$RUN_CHOICE"
-
     else
-
         read -p " Choose an option (1-3): " MODE_CHOICE
-
     fi
 
     if [ "$MODE_CHOICE" == "3" ]; then
@@ -900,23 +901,21 @@ install_panel() {
        [ "$MODE_CHOICE" != "2" ]; then
 
         log_error "Invalid selection."
-
         sleep 1
-
         return
     fi
 
     # =====================================================
-    # OWNER
+    # OWNER ACCOUNT
     # =====================================================
 
     if [ "$TARGET" == "main" ]; then
 
         print_banner
 
-        echo "╔══════════════════════════════════════════════════════╗"
-        echo "║                 CREATE OWNER ACCOUNT                ║"
-        echo "╠══════════════════════════════════════════════════════╣"
+        echo "╔══════════════════════════════════════════════╗"
+        echo "║            CREATE OWNER ACCOUNT              ║"
+        echo "╠══════════════════════════════════════════════╣"
 
         local OWNER_USER=""
         local OWNER_PASS=""
@@ -956,21 +955,23 @@ install_panel() {
                 else
 
                     echo "║ Passwords do not match or are empty."
-
+                    echo "║ Please try again."
                 fi
-
             done
         fi
 
-        echo "╚══════════════════════════════════════════════════════╝"
+        echo "╚══════════════════════════════════════════════╝"
 
         export CJH_OWNER_USER="$OWNER_USER"
         export CJH_OWNER_PASS="$OWNER_PASS"
 
+        # Keep compatibility with original createuser script
+        export JTG_OWNER_USER="$OWNER_USER"
+        export JTG_OWNER_PASS="$OWNER_PASS"
     fi
 
     # =====================================================
-    # ENVIRONMENT
+    # ENVIRONMENT SETUP
     # =====================================================
 
     mkdir -p .data backups
@@ -983,23 +984,28 @@ install_panel() {
 
         else
 
-            echo "PORT=$PORT" > .env
+            echo "PORT=6767" > .env
 
-            echo "JWT_SECRET=$(head -c 32 /dev/urandom | base64 2>/dev/null || openssl rand -base64 32)" >> .env
-
+            echo "JWT_SECRET=$(head -c 32 /dev/urandom \
+                | base64 2>/dev/null || \
+                openssl rand -base64 32)" >> .env
         fi
     fi
 
     print_banner
 
-    echo "╔══════════════════════════════════════════════════════╗"
-    echo "║              INSTALLATION PROGRESS                  ║"
-    echo "╚══════════════════════════════════════════════════════╝"
-    echo
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║             INSTALLATION PROGRESS           ║"
+    echo "╚══════════════════════════════════════════════╝"
+    echo ""
 
     execute_step \
         "System Requirement Check" \
         check_system_deps
+
+    # =====================================================
+    # DOCKER INSTALLATION
+    # =====================================================
 
     if [ "$MODE_CHOICE" == "1" ]; then
 
@@ -1036,18 +1042,21 @@ install_panel() {
         else
 
             execute_step \
-                "Building & Starting CJH Developer Container" \
+                "Building & Starting CJH Admin" \
                 start_panel_docker \
                 cjh-admin
 
             execute_step \
-                "Waiting for Developer Port 3000" \
+                "Waiting for CJH Admin Port 3000" \
                 health_check \
                 3000 \
                 docker \
                 cjh-admin
-
         fi
+
+    # =====================================================
+    # NODE.JS INSTALLATION
+    # =====================================================
 
     else
 
@@ -1066,7 +1075,7 @@ install_panel() {
                 setup_owner
 
             execute_step \
-                "Building CJH Panel" \
+                "Building CJH Application" \
                 build_application
 
             execute_step \
@@ -1084,32 +1093,279 @@ install_panel() {
         else
 
             execute_step \
-                "Building Developer Panel" \
+                "Building CJH Admin Application" \
                 build_application
 
             execute_step \
-                "Starting CJH Developer Service" \
+                "Starting CJH Admin PM2 Service" \
                 start_panel_node \
                 cjh-admin
 
             execute_step \
-                "Waiting for Developer Port 3000" \
+                "Waiting for CJH Admin Port 3000" \
                 health_check \
                 3000 \
                 pm2 \
                 cjh-admin
-
         fi
-
     fi
+
+    # =====================================================
+    # STATUS
+    # =====================================================
 
     show_status
 
     local IP
 
-    IP=$(curl -s -m 2 ifconfig.me 2>/dev/null \
-        || curl -s -m 2 icanhazip.com 2>/dev/null \
-        || hostname -I 2>/dev/null | awk '{print $1}' \
-        || echo "localhost")
+    IP=$(curl -s -m 2 ifconfig.me 2>/dev/null || \
+         curl -s -m 2 icanhazip.com 2>/dev/null || \
+         hostname -I 2>/dev/null \
+         | awk '{print $1}' || \
+         echo "localhost")
 
-    if [ "$TARGET" == "
+    if [ "$TARGET" == "main" ]; then
+
+        log_success \
+            "CJH Main Panel installation is complete and verified!"
+
+        echo -e "${GREEN}"
+        echo "✓ CJH Panel is ready."
+        echo "✓ Brand: ZAIRA x Jishnu"
+        echo "✓ Main URL: http://${IP}:6767"
+        echo "✓ Username: ${OWNER_USER}"
+        echo -e "${NC}"
+
+    else
+
+        log_success \
+            "CJH Developer Panel installation is complete and verified!"
+
+        echo -e "${GREEN}"
+        echo "✓ CJH Developer Panel is ready."
+        echo "✓ Brand: ZAIRA x Jishnu"
+        echo "✓ Developer URL: http://${IP}:3000"
+        echo -e "${NC}"
+    fi
+}
+
+# =========================================================
+# UPDATE PANEL
+# =========================================================
+
+update_panel() {
+
+    if [ ! -f "update.sh" ]; then
+
+        log_error "update.sh not found."
+
+        return
+    fi
+
+    bash update.sh
+}
+
+# =========================================================
+# CREATE OWNER USER
+# =========================================================
+
+create_owner_user() {
+
+    print_banner
+
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║            CREATE OWNER ACCOUNT              ║"
+    echo "╚══════════════════════════════════════════════╝"
+
+    local OWNER_USER=""
+    local OWNER_PASS=""
+    local OWNER_PASS2=""
+
+    while true; do
+
+        read -p " Username: " OWNER_USER
+
+        if [ -n "$OWNER_USER" ]; then
+            break
+        fi
+
+    done
+
+    while true; do
+
+        read -s -p " Password: " OWNER_PASS
+        echo ""
+
+        read -s -p " Confirm Password: " OWNER_PASS2
+        echo ""
+
+        if [ "$OWNER_PASS" == "$OWNER_PASS2" ] && \
+           [ -n "$OWNER_PASS" ]; then
+
+            break
+
+        else
+
+            echo "Passwords do not match or are empty."
+            echo "Try again."
+        fi
+    done
+
+    export CJH_OWNER_USER="$OWNER_USER"
+    export CJH_OWNER_PASS="$OWNER_PASS"
+
+    # Compatibility with original createuser command
+    export JTG_OWNER_USER="$OWNER_USER"
+    export JTG_OWNER_PASS="$OWNER_PASS"
+
+    execute_step \
+        "Setting up CJH Owner Account" \
+        setup_owner
+
+    log_success \
+        "CJH Owner user setup completed successfully!"
+}
+
+# =========================================================
+# UNINSTALL PANEL
+# =========================================================
+
+uninstall_panel() {
+
+    if [ ! -f "uninstall.sh" ]; then
+
+        log_error "uninstall.sh not found."
+
+        return
+    fi
+
+    bash uninstall.sh
+}
+
+# =========================================================
+# DIRECT INVOCATION
+# =========================================================
+# bash install.sh main
+# bash install.sh dev
+# =========================================================
+
+if [ "$1" == "main" ]; then
+
+    install_panel "main"
+
+    exit 0
+
+elif [ "$1" == "dev" ]; then
+
+    install_panel "dev"
+
+    exit 0
+fi
+
+# =========================================================
+# MAIN MENU
+# =========================================================
+
+while true; do
+
+    print_banner
+
+    echo -e "  ${BOLD}1)${NC} Initialize Main Panel"
+    echo -e "  ${BOLD}2)${NC} Initialize Developer Panel"
+    echo -e "  ${BOLD}3)${NC} Update CJH Panel"
+    echo -e "  ${BOLD}4)${NC} Create Owner"
+    echo -e "  ${BOLD}5)${NC} Uninstall CJH Panel"
+    echo -e "  ${BOLD}6)${NC} Exit"
+
+    echo ""
+    echo "========================================================"
+
+    if ! read -p " Choose an option (1-6): " CHOICE; then
+
+        echo ""
+        break
+    fi
+
+    case "$CHOICE" in
+
+        1)
+
+            install_panel "main"
+
+            if [ -t 0 ]; then
+                read -p \
+                "Press Enter to return to main menu..." \
+                || true
+            fi
+
+            ;;
+
+        2)
+
+            install_panel "dev"
+
+            if [ -t 0 ]; then
+                read -p \
+                "Press Enter to return to main menu..." \
+                || true
+            fi
+
+            ;;
+
+        3)
+
+            update_panel
+
+            if [ -t 0 ]; then
+                read -p \
+                "Press Enter to return to main menu..." \
+                || true
+            fi
+
+            ;;
+
+        4)
+
+            create_owner_user
+
+            if [ -t 0 ]; then
+                read -p \
+                "Press Enter to return to main menu..." \
+                || true
+            fi
+
+            ;;
+
+        5)
+
+            uninstall_panel
+
+            if [ -t 0 ]; then
+                read -p \
+                "Press Enter to return to main menu..." \
+                || true
+            fi
+
+            ;;
+
+        6)
+
+            echo ""
+            echo -e "${YELLOW}Exiting CJH Panel installer...${NC}"
+            echo -e "${CYAN}ZAIRA x Jishnu${NC}"
+            echo ""
+
+            exit 0
+
+            ;;
+
+        *)
+
+            log_error "Invalid option!"
+
+            sleep 1.5
+
+            ;;
+    esac
+
+done
